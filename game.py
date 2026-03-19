@@ -49,16 +49,17 @@ def start_fade(scene_id):
 
 asset_map = {
 
-    "bg_livingroom":{"file":"Game Images/backgroundLight.png"},
-    "bg_couch":{"file":"Game Images/backgroundDark.png"},
-    "bg_bedroom":{"file":"Game Images/bedroom.png"},
+"bg_livingroom":{"file":"Game Images/backgroundLight.png"},
+"bg_couch":{"file":"Game Images/backgroundDark.png"},
+"bg_bedroom":{"file":"Game Images/bedroom.png"},
+"game_icon":{"file":"Game Images/icon.png"},
 
-    "char_neutral":{"file":"Game Images/charNeutral.png"},
-    "char_angry":{"file":"Game Images/charAngry.png"},
-    "char_furious":{"file":"Game Images/charAngry.png"},
-    "char_happy":{"file":"Game Images/charHappy.png"},
+"char_neutral":{"file":"Game Images/charNeutral.png"},
+"char_angry":{"file":"Game Images/charAngry.png"},
+"char_furious":{"file":"Game Images/charAngry.png"},
+"char_happy":{"file":"Game Images/charHappy.png"},
 
-    "none":None
+"none":None
 }
 
 loaded_assets = {}
@@ -257,8 +258,11 @@ scenes = {
 "THE COUCH",
 "GAME OVER"
 ],
-"type":"story",
-"next":"intro",
+"type":"choice",
+"choices":[
+{"text":"Restart","next":"intro"},
+{"text":"Main Menu","next":"title"}
+],
 "bg":"bg_couch",
 "char":"none",
 "music":"music/5. Couch ending.mp3"
@@ -269,11 +273,33 @@ scenes = {
 "Crisis Averted.",
 "You get to sleep in the bed!"
 ],
-"type":"story",
-"next":"intro",
+"type":"choice",
+"choices":[
+{"text":"Play Again","next":"intro"},
+{"text":"Main Menu","next":"title"}
+],
 "bg":"bg_bedroom",
 "char":"char_happy",
 "music":"music/6. Successful Ending.mp3"
+},
+
+"credits":{
+"texts":[
+"WHY AM I ANGRY TODAY? Version:1.0",
+"All Right Reserved"
+"",
+"Created by Sai Tukrul",
+"BS in DS AI/ML IIT Jodhpur",
+"",
+"Built using Python and Pygame",
+"",
+"Thanks for playing!"
+],
+"type":"story",
+"next":"title",
+"bg":"bg_livingroom",
+"char":"game_icon",
+"music":"music/1. Intro Song.mp3"
 }
 
 }
@@ -355,7 +381,16 @@ while running:
             pygame.quit()
             sys.exit()
 
+        if event.type==pygame.VIDEORESIZE:
+            WIDTH, HEIGHT = event.w, event.h
+            screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+            load_assets()
+
         if event.type==pygame.KEYDOWN:
+
+            if event.key==pygame.K_ESCAPE:
+                pygame.quit()
+                sys.exit()
 
             if event.key==pygame.K_f:
                 screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.FULLSCREEN)
@@ -401,7 +436,10 @@ while running:
 
         screen.blit(char,(x,y))
 
-    box_h=180
+    if current_scene == "credits":
+        box_h = 300
+    else:
+        box_h = 180
 
     box = pygame.Surface((WIDTH,box_h),pygame.SRCALPHA)
     box.fill(TEXT_BOX_BG)
@@ -414,6 +452,10 @@ while running:
 
         render = font.render(text,True,WHITE)
         screen.blit(render,(40,start_y+i*40))
+
+    if anim["finished"] and scene["type"]=="story":
+        indicator = small_font.render(" -> Click to continue",True,WHITE)
+        screen.blit(indicator,(WIDTH-220,HEIGHT-40))
 
     if scene["type"]=="menu":
 
@@ -432,9 +474,10 @@ while running:
         if not active_buttons:
 
             start = Button("Start Game",WIDTH//2-150,HEIGHT//2,300,50,"intro")
-            quit = Button("Quit",WIDTH//2-150,HEIGHT//2+70,300,50,"quit")
+            credits = Button("Credits",WIDTH//2-150,HEIGHT//2+70,300,50,"credits")
+            quit = Button("Quit",WIDTH//2-150,HEIGHT//2+140,300,50,"quit")
 
-            active_buttons=[start,quit]
+            active_buttons=[start,credits,quit]
 
         for b in active_buttons:
             b.draw(screen,mouse)
@@ -455,10 +498,6 @@ while running:
 
         for b in active_buttons:
             b.draw(screen,mouse)
-
-    # -------------------------
-    # FADE UPDATE
-    # -------------------------
 
     if fading:
 
