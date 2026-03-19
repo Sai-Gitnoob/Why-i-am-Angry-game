@@ -3,10 +3,9 @@ import sys
 import math
 
 pygame.init()
+pygame.mixer.init()
 
-# -------------------------
-# WINDOW SETTINGS
-# -------------------------
+current_music=None
 
 WIDTH, HEIGHT = 1000, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
@@ -16,10 +15,6 @@ icon = pygame.image.load("Game Images/icon.png")
 pygame.display.set_icon(icon)
 
 clock = pygame.time.Clock()
-
-# -------------------------
-# COLORS / FONTS
-# -------------------------
 
 WHITE = (255,255,255)
 BLACK = (0,0,0)
@@ -31,6 +26,22 @@ small_font = pygame.font.SysFont("arial",22)
 title_font = pygame.font.SysFont("arial",64,bold=True)
 
 TEXT_BOX_BG = (0,0,0,180)
+
+# -------------------------
+# FADE SYSTEM
+# -------------------------
+
+fade_alpha = 0
+fade_speed = 10
+fading = False
+fade_direction = 1
+next_scene = None
+
+def start_fade(scene_id):
+    global fading, fade_direction, next_scene
+    fading = True
+    fade_direction = 1
+    next_scene = scene_id
 
 # -------------------------
 # ASSETS
@@ -91,6 +102,26 @@ def load_assets():
 load_assets()
 
 # -------------------------
+# MUSIC
+# -------------------------
+
+def play_music(track):
+
+    global current_music
+
+    if current_music == track:
+        return
+
+    if pygame.mixer.music.get_busy():
+        pygame.mixer.music.fadeout(500)
+
+    pygame.mixer.music.load(track)
+    pygame.mixer.music.set_volume(0.5)
+    pygame.mixer.music.play(-1)
+
+    current_music = track
+
+# -------------------------
 # BUTTON CLASS
 # -------------------------
 
@@ -121,139 +152,128 @@ class Button:
 scenes = {
 
 "title":{
-
-    "texts":[""],
-    "type":"menu",
-    "bg":"bg_livingroom",
-    "char":"none"
+"texts":[""],
+"type":"menu",
+"bg":"bg_livingroom",
+"char":"none",
+"music":"music/1. Intro Song.mp3"
 },
 
 "intro":{
-
-    "texts":[
-        "You come home after a long day...",
-        "Your girlfriend looks angry.",
-        "(Click to continue)"
-    ],
-
-    "type":"story",
-    "next":"ask",
-    "bg":"bg_livingroom",
-    "char":"char_angry"
+"texts":[
+"You come home after a long day...",
+"Your girlfriend looks angry.",
+"(Click to continue)"
+],
+"type":"story",
+"next":"ask",
+"bg":"bg_livingroom",
+"char":"char_angry",
+"music":"music/2. Normal Convo.mp3"
 },
 
 "ask":{
-
-    "texts":[
-        "You: Hey... why are you angry?",
-        "(Click)"
-    ],
-
-    "type":"story",
-    "next":"nothing",
-    "bg":"bg_livingroom",
-    "char":"char_angry"
+"texts":[
+"You: Hey... why are you angry?",
+"(Click)"
+],
+"type":"story",
+"next":"nothing",
+"bg":"bg_livingroom",
+"char":"char_angry",
+"music":"music/2. Normal Convo.mp3"
 },
 
 "nothing":{
-
-    "texts":[
-        "Her: Nothing.",
-        "(She is clearly lying)",
-        "(Click to guess)"
-    ],
-
-    "type":"story",
-    "next":"guess",
-    "bg":"bg_livingroom",
-    "char":"char_angry"
+"texts":[
+"Her: Nothing.",
+"(She is clearly lying)",
+"(Click to guess)"
+],
+"type":"story",
+"next":"guess",
+"bg":"bg_livingroom",
+"char":"char_angry",
+"music":"music/2. Normal Convo.mp3"
 },
 
 "guess":{
-
-    "texts":[
-        "You try to guess the reason..."
-    ],
-
-    "type":"choice",
-
-    "choices":[
-        {"text":"Forgot anniversary","next":"anniversary"},
-        {"text":"Liked another girl's post","next":"post"},
-        {"text":"Because I exist","next":"exist"}
-    ],
-
-    "bg":"bg_livingroom",
-    "char":"char_neutral"
+"texts":[
+"You try to guess the reason..."
+],
+"type":"choice",
+"choices":[
+{"text":"Forgot anniversary","next":"anniversary"},
+{"text":"Liked another girl's post","next":"post"},
+{"text":"Because I exist","next":"exist"}
+],
+"bg":"bg_livingroom",
+"char":"char_neutral",
+"music":"music/3. Guessing Reasons.mp3"
 },
 
 "anniversary":{
-
-    "texts":[
-        "Her: IT'S IN MARCH!",
-        "YOU DON'T EVEN KNOW?!",
-        "She is furious."
-    ],
-
-    "type":"story",
-    "next":"game_over",
-    "bg":"bg_livingroom",
-    "char":"char_furious"
+"texts":[
+"Her: IT'S IN JUNE!",
+"YOU DON'T EVEN KNOW?!",
+"She is furious."
+],
+"type":"story",
+"next":"game_over",
+"bg":"bg_livingroom",
+"char":"char_furious",
+"music":"music/4. She angry.mp3"
 },
 
 "post":{
-
-    "texts":[
-        "Her: WOW.",
-        "JUST WOW.",
-        "She starts crying."
-    ],
-
-    "type":"story",
-    "next":"game_over",
-    "bg":"bg_livingroom",
-    "char":"char_furious"
+"texts":[
+"Her: WOW.",
+"JUST WOW.",
+"She starts crying."
+],
+"type":"story",
+"next":"game_over",
+"bg":"bg_livingroom",
+"char":"char_furious",
+"music":"music/4. She angry.mp3"
 },
 
 "exist":{
-
-    "texts":[
-        "Her: ...",
-        "She tries not to laugh.",
-        "She smirks."
-    ],
-
-    "type":"story",
-    "next":"good",
-    "bg":"bg_livingroom",
-    "char":"char_happy"
+"texts":[
+"Her: ...",
+"She tries not to laugh.",
+"She smirks."
+],
+"type":"story",
+"next":"good",
+"bg":"bg_livingroom",
+"char":"char_happy",
+"music":"music/2. Normal Convo.mp3"
 },
 
 "game_over":{
-
-    "texts":[
-        "Tonight's sleeping arrangement:",
-        "THE COUCH",
-        "GAME OVER"
-    ],
-
-    "type":"story",
-    "next":"intro",
-    "bg":"bg_couch",
-    "char":"none"
+"texts":[
+"Tonight's sleeping arrangement:",
+"THE COUCH",
+"GAME OVER"
+],
+"type":"story",
+"next":"intro",
+"bg":"bg_couch",
+"char":"none",
+"music":"music/5. Couch ending.mp3"
 },
 
 "good":{
-
-    "texts":[
-        "Crisis Averted.",
-        "You get to sleep in the bed!"
-    ],
-
-    "type":"story",
-    "next":"intro",
-    "bg":"bg_bedroom",
-    "char":"char_happy"
+"texts":[
+"Crisis Averted.",
+"You get to sleep in the bed!"
+],
+"type":"story",
+"next":"intro",
+"bg":"bg_bedroom",
+"char":"char_happy",
+"music":"music/6. Successful Ending.mp3"
 }
 
 }
@@ -293,28 +313,19 @@ active_buttons=[]
 
 reset_anim(scenes[current_scene])
 
-# -------------------------
-# MAIN LOOP
-# -------------------------
-
 running=True
 
 while running:
 
     scene = scenes[current_scene]
-    time = pygame.time.get_ticks()
 
+    if "music" in scene:
+        play_music(scene["music"])
+
+    time = pygame.time.get_ticks()
     mouse = pygame.mouse.get_pos()
 
-    # ---------------------
-    # CHARACTER ANIMATION
-    # ---------------------
-
     bob = math.sin(time*0.005)*5 if scene["char"]!="none" else 0
-
-    # ---------------------
-    # TYPEWRITER
-    # ---------------------
 
     if not anim["finished"]:
 
@@ -338,10 +349,6 @@ while running:
                 else:
                     anim["finished"]=True
 
-    # ---------------------
-    # EVENTS
-    # ---------------------
-
     for event in pygame.event.get():
 
         if event.type==pygame.QUIT:
@@ -361,10 +368,7 @@ while running:
             else:
 
                 if scene["type"]=="story":
-
-                    current_scene = scene["next"]
-                    active_buttons.clear()
-                    reset_anim(scenes[current_scene])
+                    start_fade(scene["next"])
 
                 elif scene["type"]=="menu":
 
@@ -375,23 +379,13 @@ while running:
                                 pygame.quit()
                                 sys.exit()
 
-                            current_scene=b.target
-                            active_buttons.clear()
-                            reset_anim(scenes[current_scene])
+                            start_fade(b.target)
 
                 elif scene["type"]=="choice":
 
                     for b in active_buttons:
-
                         if b.clicked(mouse,event):
-
-                            current_scene=b.target
-                            active_buttons.clear()
-                            reset_anim(scenes[current_scene])
-
-    # ---------------------
-    # DRAW
-    # ---------------------
+                            start_fade(b.target)
 
     screen.fill(BLACK)
 
@@ -407,26 +401,6 @@ while running:
 
         screen.blit(char,(x,y))
 
-    # ---------------------
-    # TITLE SCREEN
-    # ---------------------
-
-    if scene["type"]=="menu":
-
-        overlay = pygame.Surface((WIDTH,HEIGHT),pygame.SRCALPHA)
-        overlay.fill((0,0,0,120))
-        screen.blit(overlay,(0,0))
-
-        title = title_font.render("WHY AM I ANGRY TODAY?",True,WHITE)
-        subtitle = small_font.render("A Relationship Survival Simulator",True,WHITE)
-
-        screen.blit(title,(WIDTH//2-title.get_width()//2,HEIGHT//4))
-        screen.blit(subtitle,(WIDTH//2-subtitle.get_width()//2,HEIGHT//4+80))
-
-    # ---------------------
-    # TEXT BOX
-    # ---------------------
-
     box_h=180
 
     box = pygame.Surface((WIDTH,box_h),pygame.SRCALPHA)
@@ -441,9 +415,17 @@ while running:
         render = font.render(text,True,WHITE)
         screen.blit(render,(40,start_y+i*40))
 
-    # ---------------------
-    # BUTTONS
-    # ---------------------
+    if scene["type"]=="menu":
+
+        overlay = pygame.Surface((WIDTH,HEIGHT),pygame.SRCALPHA)
+        overlay.fill((0,0,0,120))
+        screen.blit(overlay,(0,0))
+
+        title = title_font.render("WHY AM I ANGRY TODAY?",True,WHITE)
+        subtitle = small_font.render("A Relationship Survival Simulator",True,WHITE)
+
+        screen.blit(title,(WIDTH//2-title.get_width()//2,HEIGHT//4))
+        screen.blit(subtitle,(WIDTH//2-subtitle.get_width()//2,HEIGHT//4+80))
 
     if scene["type"]=="menu":
 
@@ -473,6 +455,39 @@ while running:
 
         for b in active_buttons:
             b.draw(screen,mouse)
+
+    # -------------------------
+    # FADE UPDATE
+    # -------------------------
+
+    if fading:
+
+        fade_alpha += fade_speed * fade_direction
+
+        if fade_alpha >= 255:
+
+            fade_alpha = 255
+
+            if next_scene:
+
+                current_scene = next_scene
+                reset_anim(scenes[current_scene])
+                active_buttons.clear()
+
+                next_scene = None
+
+            fade_direction = -1
+
+        elif fade_alpha <= 0:
+
+            fade_alpha = 0
+            fading = False
+
+    fade_surface = pygame.Surface((WIDTH, HEIGHT))
+    fade_surface.fill((0,0,0))
+    fade_surface.set_alpha(fade_alpha)
+
+    screen.blit(fade_surface,(0,0))
 
     pygame.display.update()
     clock.tick(60)
