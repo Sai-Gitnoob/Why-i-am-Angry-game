@@ -266,7 +266,7 @@ You are free to:
 * distribute
 
 with proper attribution.
-
+(All Rights Reserved)
 ---
 
 ## Final Note
