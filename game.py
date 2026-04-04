@@ -157,7 +157,7 @@ scenes = {
 "type":"menu",
 "bg":"bg_livingroom",
 "char":"none",
-"music":"music/1. Intro Song.mp3"
+"music":"music/1. Intro Song.ogg"
 },
 
 "intro":{
@@ -170,7 +170,7 @@ scenes = {
 "next":"ask",
 "bg":"bg_livingroom",
 "char":"char_angry",
-"music":"music/2. Normal Convo.mp3"
+"music":"music/2. Normal Convo.ogg"
 },
 
 "ask":{
@@ -182,7 +182,7 @@ scenes = {
 "next":"nothing",
 "bg":"bg_livingroom",
 "char":"char_angry",
-"music":"music/2. Normal Convo.mp3"
+"music":"music/2. Normal Convo.ogg"
 },
 
 "nothing":{
@@ -195,7 +195,7 @@ scenes = {
 "next":"guess",
 "bg":"bg_livingroom",
 "char":"char_angry",
-"music":"music/2. Normal Convo.mp3"
+"music":"music/2. Normal Convo.ogg"
 },
 
 "guess":{
@@ -210,7 +210,7 @@ scenes = {
 ],
 "bg":"bg_livingroom",
 "char":"char_neutral",
-"music":"music/3. Guessing Reasons.mp3"
+"music":"music/3. Guessing Reasons.ogg"
 },
 
 "anniversary":{
@@ -223,7 +223,7 @@ scenes = {
 "next":"game_over",
 "bg":"bg_livingroom",
 "char":"char_furious",
-"music":"music/4. She angry.mp3"
+"music":"music/4. She angry.ogg"
 },
 
 "post":{
@@ -236,7 +236,7 @@ scenes = {
 "next":"game_over",
 "bg":"bg_livingroom",
 "char":"char_furious",
-"music":"music/4. She angry.mp3"
+"music":"music/4. She angry.ogg"
 },
 
 "exist":{
@@ -249,7 +249,7 @@ scenes = {
 "next":"good",
 "bg":"bg_livingroom",
 "char":"char_happy",
-"music":"music/2. Normal Convo.mp3"
+"music":"music/2. Normal Convo.ogg"
 },
 
 "game_over":{
@@ -265,7 +265,7 @@ scenes = {
 ],
 "bg":"bg_couch",
 "char":"none",
-"music":"music/5. Couch ending.mp3"
+"music":"music/5. Couch ending.ogg"
 },
 
 "good":{
@@ -280,7 +280,7 @@ scenes = {
 ],
 "bg":"bg_bedroom",
 "char":"char_happy",
-"music":"music/6. Successful Ending.mp3"
+"music":"music/6. Successful Ending.ogg"
 },
 
 "credits":{
@@ -299,7 +299,7 @@ scenes = {
 "next":"title",
 "bg":"bg_livingroom",
 "char":"game_icon",
-"music":"music/1. Intro Song.mp3"
+"music":"music/1. Intro Song.ogg"
 }
 
 }
