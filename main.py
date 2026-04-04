@@ -1,36 +1,42 @@
 import pygame
 import sys
 import math
+import os
 
 pygame.init()
 pygame.mixer.init()
 
-current_music=None
+# -------------------------
+# PATH SYSTEM
+# -------------------------
+BASE_PATH = os.path.dirname(__file__)
+
+def asset_path(*path):
+    return os.path.join(BASE_PATH, *path)
+
+current_music = None
 
 WIDTH, HEIGHT = 1000, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Why Am I Angry Today?")
 
-icon = pygame.image.load("Game Images/icon.png")
+icon = pygame.image.load(asset_path("assets", "icon.png"))
 pygame.display.set_icon(icon)
 
 clock = pygame.time.Clock()
 
-WHITE = (255,255,255)
-BLACK = (0,0,0)
-BLUE = (70,100,220)
-HOVER_BLUE = (110,140,255)
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+BLUE = (70, 100, 220)
+HOVER_BLUE = (110, 140, 255)
 
-font = pygame.font.SysFont("arial",28,bold=True)
-small_font = pygame.font.SysFont("arial",22)
-title_font = pygame.font.SysFont("arial",64,bold=True)
-
-TEXT_BOX_BG = (0,0,0,180)
+font = pygame.font.SysFont("arial", 28, bold=True)
+small_font = pygame.font.SysFont("arial", 22)
+title_font = pygame.font.SysFont("arial", 64, bold=True)
 
 # -------------------------
 # FADE SYSTEM
 # -------------------------
-
 fade_alpha = 0
 fade_speed = 10
 fading = False
@@ -46,58 +52,41 @@ def start_fade(scene_id):
 # -------------------------
 # ASSETS
 # -------------------------
-
 asset_map = {
-
-"bg_livingroom":{"file":"Game Images/backgroundLight.png"},
-"bg_couch":{"file":"Game Images/backgroundDark.png"},
-"bg_bedroom":{"file":"Game Images/bedroom.png"},
-"game_icon":{"file":"Game Images/icon.png"},
-
-"char_neutral":{"file":"Game Images/charNeutral.png"},
-"char_angry":{"file":"Game Images/charAngry.png"},
-"char_furious":{"file":"Game Images/charAngry.png"},
-"char_happy":{"file":"Game Images/charHappy.png"},
-
-"none":None
+    "bg_livingroom": {"file": asset_path("assets", "background_light.png")},
+    "bg_couch":      {"file": asset_path("assets", "background_dark.png")},
+    "bg_bedroom":    {"file": asset_path("assets", "bedroom.png")},
+    "game_icon":     {"file": asset_path("assets", "icon.png")},
+    "char_neutral":  {"file": asset_path("assets", "char_neutral.png")},
+    "char_angry":    {"file": asset_path("assets", "char_angry.png")},
+    "char_furious":  {"file": asset_path("assets", "char_angry.png")},
+    "char_happy":    {"file": asset_path("assets", "char_happy.png")},
+    "none": None
 }
 
 loaded_assets = {}
 
 def load_assets():
-
-    for name,data in asset_map.items():
-
+    for name, data in asset_map.items():
         if data is None:
             continue
-
         try:
-
             img = pygame.image.load(data["file"]).convert_alpha()
-
             if name.startswith("bg"):
-                img = pygame.transform.scale(img,(WIDTH,HEIGHT))
-
+                img = pygame.transform.scale(img, (WIDTH, HEIGHT))
             else:
-
                 max_height = 420
                 scale = max_height / img.get_height()
-
-                new_w = int(img.get_width()*scale)
-                new_h = int(img.get_height()*scale)
-
-                img = pygame.transform.smoothscale(img,(new_w,new_h))
-
+                new_w = int(img.get_width() * scale)
+                new_h = int(img.get_height() * scale)
+                img = pygame.transform.smoothscale(img, (new_w, new_h))
             loaded_assets[name] = img
-
-        except:
-
-            surf = pygame.Surface((WIDTH,HEIGHT) if name.startswith("bg") else (300,400))
-            surf.fill((200,200,200))
-
-            txt = small_font.render(name,True,BLACK)
-            surf.blit(txt,(20,20))
-
+        except Exception as e:
+            print("ERROR LOADING:", data["file"], e)
+            surf = pygame.Surface((WIDTH, HEIGHT) if name.startswith("bg") else (300, 400))
+            surf.fill((200, 200, 200))
+            txt = small_font.render(name, True, BLACK)
+            surf.blit(txt, (20, 20))
             loaded_assets[name] = surf
 
 load_assets()
@@ -105,244 +94,186 @@ load_assets()
 # -------------------------
 # MUSIC
 # -------------------------
-
 def play_music(track):
-
     global current_music
-
     if current_music == track:
         return
-
     if pygame.mixer.music.get_busy():
         pygame.mixer.music.fadeout(500)
-
     pygame.mixer.music.load(track)
     pygame.mixer.music.set_volume(0.5)
     pygame.mixer.music.play(-1)
-
     current_music = track
 
 # -------------------------
 # BUTTON CLASS
 # -------------------------
-
 class Button:
-
-    def __init__(self,text,x,y,w,h,target):
-        self.rect = pygame.Rect(x,y,w,h)
+    def __init__(self, text, x, y, w, h, target):
+        self.rect = pygame.Rect(x, y, w, h)
         self.text = text
         self.target = target
 
-    def draw(self,surface,mouse):
-
+    def draw(self, surface, mouse):
         color = HOVER_BLUE if self.rect.collidepoint(mouse) else BLUE
-        pygame.draw.rect(surface,color,self.rect,border_radius=8)
-
-        label = small_font.render(self.text,True,WHITE)
+        pygame.draw.rect(surface, color, self.rect, border_radius=8)
+        label = small_font.render(self.text, True, WHITE)
         rect = label.get_rect(center=self.rect.center)
+        surface.blit(label, rect)
 
-        surface.blit(label,rect)
-
-    def clicked(self,mouse,event):
-        return event.type==pygame.MOUSEBUTTONDOWN and event.button==1 and self.rect.collidepoint(mouse)
+    def clicked(self, mouse, event):
+        return event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and self.rect.collidepoint(mouse)
 
 # -------------------------
 # STORY DATA
 # -------------------------
-
 scenes = {
 
-"title":{
-"texts":[""],
-"type":"menu",
-"bg":"bg_livingroom",
-"char":"none",
-"music":"music/1. Intro Song.ogg"
-},
+    "title": {
+        "texts": [""],
+        "type": "menu",
+        "bg": "bg_livingroom",
+        "char": "none",
+        "music": asset_path("music", "intro.ogg")
+    },
 
-"intro":{
-"texts":[
-"You come home after a long day...",
-"Your girlfriend looks angry.",
-"(Click to continue)"
-],
-"type":"story",
-"next":"ask",
-"bg":"bg_livingroom",
-"char":"char_angry",
-"music":"music/2. Normal Convo.ogg"
-},
+    "intro": {
+        "texts": ["You come home after a long day...", "Your girlfriend looks angry.", "(Click to continue)"],
+        "type": "story",
+        "next": "ask",
+        "bg": "bg_livingroom",
+        "char": "char_angry",
+        "music": asset_path("music", "normal.ogg")
+    },
 
-"ask":{
-"texts":[
-"You: Hey... why are you angry?",
-"(Click)"
-],
-"type":"story",
-"next":"nothing",
-"bg":"bg_livingroom",
-"char":"char_angry",
-"music":"music/2. Normal Convo.ogg"
-},
+    "ask": {
+        "texts": ["You: Hey... why are you angry?", "(Click)"],
+        "type": "story",
+        "next": "nothing",
+        "bg": "bg_livingroom",
+        "char": "char_angry",
+        "music": asset_path("music", "normal.ogg")
+    },
 
-"nothing":{
-"texts":[
-"Her: Nothing.",
-"(She is clearly lying)",
-"(Click to guess)"
-],
-"type":"story",
-"next":"guess",
-"bg":"bg_livingroom",
-"char":"char_angry",
-"music":"music/2. Normal Convo.ogg"
-},
+    "nothing": {
+        "texts": ["Her: Nothing.", "(She is clearly lying)", "(Click to guess)"],
+        "type": "story",
+        "next": "guess",
+        "bg": "bg_livingroom",
+        "char": "char_angry",
+        "music": asset_path("music", "normal.ogg")
+    },
 
-"guess":{
-"texts":[
-"You try to guess the reason..."
-],
-"type":"choice",
-"choices":[
-{"text":"Forgot anniversary","next":"anniversary"},
-{"text":"Liked another girl's post","next":"post"},
-{"text":"Because I exist","next":"exist"}
-],
-"bg":"bg_livingroom",
-"char":"char_neutral",
-"music":"music/3. Guessing Reasons.ogg"
-},
+    "guess": {
+        "texts": ["You try to guess the reason..."],
+        "type": "choice",
+        "choices": [
+            {"text": "Forgot anniversary", "next": "anniversary"},
+            {"text": "Liked another girl's post", "next": "post"},
+            {"text": "Because I exist", "next": "exist"}
+        ],
+        "bg": "bg_livingroom",
+        "char": "char_neutral",
+        "music": asset_path("music", "guessing.ogg")
+    },
 
-"anniversary":{
-"texts":[
-"Her: IT'S IN MARCH!",
-"YOU DON'T EVEN KNOW?!",
-"She is furious."
-],
-"type":"story",
-"next":"game_over",
-"bg":"bg_livingroom",
-"char":"char_furious",
-"music":"music/4. She angry.ogg"
-},
+    "anniversary": {
+        "texts": ["Her: IT'S IN MARCH!", "YOU DON'T EVEN KNOW?!", "She is furious."],
+        "type": "story",
+        "next": "game_over",
+        "bg": "bg_livingroom",
+        "char": "char_furious",
+        "music": asset_path("music", "angry.ogg")
+    },
 
-"post":{
-"texts":[
-"Her: WOW.",
-"JUST WOW.",
-"She starts crying."
-],
-"type":"story",
-"next":"game_over",
-"bg":"bg_livingroom",
-"char":"char_furious",
-"music":"music/4. She angry.ogg"
-},
+    "post": {
+        "texts": ["Her: WOW.", "JUST WOW.", "She starts crying."],
+        "type": "story",
+        "next": "game_over",
+        "bg": "bg_livingroom",
+        "char": "char_furious",
+        "music": asset_path("music", "angry.ogg")
+    },
 
-"exist":{
-"texts":[
-"Her: ...",
-"She tries not to laugh.",
-"She smirks."
-],
-"type":"story",
-"next":"good",
-"bg":"bg_livingroom",
-"char":"char_happy",
-"music":"music/2. Normal Convo.ogg"
-},
+    "exist": {
+        "texts": ["Her: ...", "She tries not to laugh.", "She smirks."],
+        "type": "story",
+        "next": "good",
+        "bg": "bg_livingroom",
+        "char": "char_happy",
+        "music": asset_path("music", "normal.ogg")
+    },
 
-"game_over":{
-"texts":[
-"Tonight's sleeping arrangement:",
-"THE COUCH",
-"GAME OVER"
-],
-"type":"choice",
-"choices":[
-{"text":"Restart","next":"intro"},
-{"text":"Main Menu","next":"title"}
-],
-"bg":"bg_couch",
-"char":"none",
-"music":"music/5. Couch ending.ogg"
-},
+    "game_over": {
+        "texts": ["Tonight's sleeping arrangement:", "THE COUCH", "GAME OVER"],
+        "type": "choice",
+        "choices": [
+            {"text": "Restart", "next": "intro"},
+            {"text": "Main Menu", "next": "title"}
+        ],
+        "bg": "bg_couch",
+        "char": "none",
+        "music": asset_path("music", "couch.ogg")
+    },
 
-"good":{
-"texts":[
-"Crisis Averted.",
-"You get to sleep in the bed!"
-],
-"type":"choice",
-"choices":[
-{"text":"Play Again","next":"intro"},
-{"text":"Main Menu","next":"title"}
-],
-"bg":"bg_bedroom",
-"char":"char_happy",
-"music":"music/6. Successful Ending.ogg"
-},
+    "good": {
+        "texts": ["Crisis Averted.", "You get to sleep in the bed!"],
+        "type": "choice",
+        "choices": [
+            {"text": "Play Again", "next": "intro"},
+            {"text": "Main Menu", "next": "title"}
+        ],
+        "bg": "bg_bedroom",
+        "char": "char_happy",
+        "music": asset_path("music", "success.ogg")
+    },
 
-"credits":{
-"texts":[
-"WHY AM I ANGRY TODAY? Version:1.0",
-"All Right Reserved"
-"",
-"Created by Sai Tukrul",
-"BS in DS AI/ML IIT Jodhpur",
-"",
-"Built using Python and Pygame",
-"",
-"Thanks for playing!"
-],
-"type":"story",
-"next":"title",
-"bg":"bg_livingroom",
-"char":"game_icon",
-"music":"music/1. Intro Song.ogg"
-}
-
+    "credits": {
+        "texts": [
+            "WHY AM I ANGRY TODAY? Version:1.0",
+            "All Rights Reserved",
+            "",
+            "Created by Sai Tukrul",
+            "BS in DS AI/ML IIT Jodhpur",
+            "",
+            "Built using Python and Pygame",
+            "",
+            "Thanks for playing!"
+        ],
+        "type": "story",
+        "next": "title",
+        "bg": "bg_livingroom",
+        "char": "game_icon",
+        "music": asset_path("music", "intro.ogg")
+    }
 }
 
 # -------------------------
-# TEXT ANIMATION
+# ANIMATION STATE
 # -------------------------
-
-anim = {
-"line":0,
-"char":0,
-"display":[],
-"finished":False,
-"last":0,
-"speed":30
-}
+anim = {"line": 0, "char": 0, "display": [], "finished": False, "last": 0, "speed": 30}
 
 def reset_anim(scene):
-
-    anim["line"]=0
-    anim["char"]=0
-    anim["display"]=[""]*len(scene["texts"])
-    anim["finished"]=False
-    anim["last"]=pygame.time.get_ticks()
+    anim["line"] = 0
+    anim["char"] = 0
+    anim["display"] = [""] * len(scene["texts"])
+    anim["finished"] = False
+    anim["last"] = pygame.time.get_ticks()
 
 def complete_anim(scene):
+    anim["display"] = scene["texts"].copy()
+    anim["finished"] = True
 
-    anim["display"]=scene["texts"].copy()
-    anim["finished"]=True
-
-# -------------------------
-# GAME STATE
-# -------------------------
-
-current_scene="title"
-active_buttons=[]
-
+current_scene = "title"
+active_buttons = []
 reset_anim(scenes[current_scene])
 
-running=True
+# -------------------------
+# MAIN GAME LOOP
+# -------------------------
+running = True
 
 while running:
-
     scene = scenes[current_scene]
 
     if "music" in scene:
@@ -350,183 +281,131 @@ while running:
 
     time = pygame.time.get_ticks()
     mouse = pygame.mouse.get_pos()
+    bob = math.sin(time * 0.005) * 5 if scene["char"] != "none" else 0
 
-    bob = math.sin(time*0.005)*5 if scene["char"]!="none" else 0
-
+    # ---- TEXT ANIMATION ----
     if not anim["finished"]:
-
         if time - anim["last"] > anim["speed"]:
-
             target = scene["texts"][anim["line"]]
-
             if anim["char"] < len(target):
-
                 anim["display"][anim["line"]] += target[anim["char"]]
-                anim["char"]+=1
-                anim["last"]=time
-
+                anim["char"] += 1
+                anim["last"] = time
             else:
-
-                if anim["line"] < len(scene["texts"])-1:
-
-                    anim["line"]+=1
-                    anim["char"]=0
-
+                if anim["line"] < len(scene["texts"]) - 1:
+                    anim["line"] += 1
+                    anim["char"] = 0
                 else:
-                    anim["finished"]=True
+                    anim["finished"] = True
 
+    # ---- EVENTS ----
     for event in pygame.event.get():
-
-        if event.type==pygame.QUIT:
+        if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
 
-        if event.type==pygame.VIDEORESIZE:
+        if event.type == pygame.VIDEORESIZE:
             WIDTH, HEIGHT = event.w, event.h
             screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
             load_assets()
 
-        if event.type==pygame.KEYDOWN:
-
-            if event.key==pygame.K_ESCAPE:
-                pygame.quit()
-                sys.exit()
-
-            if event.key==pygame.K_f:
-                screen = pygame.display.set_mode((WIDTH,HEIGHT),pygame.FULLSCREEN)
-
-        if event.type==pygame.MOUSEBUTTONDOWN and event.button==1:
-
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if not anim["finished"]:
                 complete_anim(scene)
-
             else:
-
-                if scene["type"]=="story":
+                if scene["type"] == "story":
                     start_fade(scene["next"])
-
-                elif scene["type"]=="menu":
-
+                elif scene["type"] == "choice":
                     for b in active_buttons:
-                        if b.clicked(mouse,event):
-
-                            if b.target=="quit":
-                                pygame.quit()
-                                sys.exit()
-
+                        if b.clicked(mouse, event):
+                            start_fade(b.target)
+                elif scene["type"] == "menu":
+                    for b in active_buttons:
+                        if b.clicked(mouse, event):
                             start_fade(b.target)
 
-                elif scene["type"]=="choice":
-
-                    for b in active_buttons:
-                        if b.clicked(mouse,event):
-                            start_fade(b.target)
-
+    # ---- DRAW BACKGROUND ----
     screen.fill(BLACK)
-
     if scene["bg"] in loaded_assets:
-        screen.blit(loaded_assets[scene["bg"]],(0,0))
+        screen.blit(loaded_assets[scene["bg"]], (0, 0))
 
-    if scene["char"]!="none":
+    # ---- DRAW CHARACTER ----
+    if scene["char"] != "none" and scene["char"] in loaded_assets:
+        char_img = loaded_assets[scene["char"]]
+        char_x = WIDTH // 2 - char_img.get_width() // 2
+        char_y = HEIGHT - char_img.get_height() - 20 + int(bob)
+        screen.blit(char_img, (char_x, char_y))
 
-        char = loaded_assets[scene["char"]]
+    # ---- TITLE / MENU SCREEN ----
+    if scene["type"] == "menu":
+        # Title text with shadow
+        shadow = title_font.render("Why Am I Angry Today?", True, (30, 30, 30))
+        title_surf = title_font.render("Why Am I Angry Today?", True, WHITE)
+        screen.blit(shadow, shadow.get_rect(center=(WIDTH // 2 + 3, HEIGHT // 3 + 3)))
+        screen.blit(title_surf, title_surf.get_rect(center=(WIDTH // 2, HEIGHT // 3)))
 
-        x = WIDTH//2 - char.get_width()//2
-        y = 50 + bob
+        # Subtitle
+        sub = small_font.render("A Visual Novel", True, (200, 200, 200))
+        screen.blit(sub, sub.get_rect(center=(WIDTH // 2, HEIGHT // 3 + 70)))
 
-        screen.blit(char,(x,y))
+        # Menu buttons
+        active_buttons = [
+            Button("Start Game", WIDTH // 2 - 110, HEIGHT // 2,      220, 50, "intro"),
+            Button("Credits",    WIDTH // 2 - 110, HEIGHT // 2 + 70, 220, 50, "credits"),
+        ]
+        for b in active_buttons:
+            b.draw(screen, mouse)
 
-    if current_scene == "credits":
-        box_h = 300
     else:
-        box_h = 180
+        # ---- TEXT BOX ----
+        box_h = 160
+        box_rect = pygame.Rect(40, HEIGHT - box_h - 20, WIDTH - 80, box_h)
+        box_surf = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
+        box_surf.fill((0, 0, 0, 180))
+        screen.blit(box_surf, (box_rect.x, box_rect.y))
+        pygame.draw.rect(screen, WHITE, box_rect, 2, border_radius=8)
 
-    box = pygame.Surface((WIDTH,box_h),pygame.SRCALPHA)
-    box.fill(TEXT_BOX_BG)
+        # Animated dialogue text
+        y_offset = box_rect.y + 15
+        for line in anim["display"]:
+            txt_surf = small_font.render(line, True, WHITE)
+            screen.blit(txt_surf, (box_rect.x + 15, y_offset))
+            y_offset += 32
 
-    screen.blit(box,(0,HEIGHT-box_h))
+        # ---- CHOICE BUTTONS ----
+        if scene["type"] == "choice" and anim["finished"]:
+            active_buttons = []
+            choices = scene["choices"]
+            btn_w, btn_h = 260, 48
+            gap = 20
+            total_w = len(choices) * btn_w + (len(choices) - 1) * gap
+            start_x = WIDTH // 2 - total_w // 2
+            btn_y = HEIGHT // 2 - btn_h // 2
 
-    start_y = HEIGHT-box_h+30
+            for i, c in enumerate(choices):
+                bx = start_x + i * (btn_w + gap)
+                b = Button(c["text"], bx, btn_y, btn_w, btn_h, c["next"])
+                active_buttons.append(b)
+                b.draw(screen, mouse)
+        else:
+            active_buttons = []
 
-    for i,text in enumerate(anim["display"]):
-
-        render = font.render(text,True,WHITE)
-        screen.blit(render,(40,start_y+i*40))
-
-    if anim["finished"] and scene["type"]=="story":
-        indicator = small_font.render(" -> Click to continue",True,WHITE)
-        screen.blit(indicator,(WIDTH-220,HEIGHT-40))
-
-    if scene["type"]=="menu":
-
-        overlay = pygame.Surface((WIDTH,HEIGHT),pygame.SRCALPHA)
-        overlay.fill((0,0,0,120))
-        screen.blit(overlay,(0,0))
-
-        title = title_font.render("WHY AM I ANGRY TODAY?",True,WHITE)
-        subtitle = small_font.render("A Relationship Survival Simulator",True,WHITE)
-
-        screen.blit(title,(WIDTH//2-title.get_width()//2,HEIGHT//4))
-        screen.blit(subtitle,(WIDTH//2-subtitle.get_width()//2,HEIGHT//4+80))
-
-    if scene["type"]=="menu":
-
-        if not active_buttons:
-
-            start = Button("Start Game",WIDTH//2-150,HEIGHT//2,300,50,"intro")
-            credits = Button("Credits",WIDTH//2-150,HEIGHT//2+70,300,50,"credits")
-            quit = Button("Quit",WIDTH//2-150,HEIGHT//2+140,300,50,"quit")
-
-            active_buttons=[start,credits,quit]
-
-        for b in active_buttons:
-            b.draw(screen,mouse)
-
-    elif scene["type"]=="choice" and anim["finished"]:
-
-        if not active_buttons:
-
-            x = WIDTH-280
-            y = 20
-
-            for c in scene["choices"]:
-
-                btn = Button(c["text"],x,y,260,40,c["next"])
-                active_buttons.append(btn)
-
-                y += 50
-
-        for b in active_buttons:
-            b.draw(screen,mouse)
-
+    # ---- FADE OVERLAY ----
     if fading:
-
         fade_alpha += fade_speed * fade_direction
-
-        if fade_alpha >= 255:
-
+        if fade_direction == 1 and fade_alpha >= 255:
             fade_alpha = 255
-
-            if next_scene:
-
-                current_scene = next_scene
-                reset_anim(scenes[current_scene])
-                active_buttons.clear()
-
-                next_scene = None
-
+            current_scene = next_scene
+            reset_anim(scenes[current_scene])
             fade_direction = -1
-
-        elif fade_alpha <= 0:
-
+        elif fade_direction == -1 and fade_alpha <= 0:
             fade_alpha = 0
             fading = False
 
-    fade_surface = pygame.Surface((WIDTH, HEIGHT))
-    fade_surface.fill((0,0,0))
-    fade_surface.set_alpha(fade_alpha)
-
-    screen.blit(fade_surface,(0,0))
+        fade_surf = pygame.Surface((WIDTH, HEIGHT))
+        fade_surf.fill(BLACK)
+        fade_surf.set_alpha(int(fade_alpha))
+        screen.blit(fade_surf, (0, 0))
 
     pygame.display.update()
     clock.tick(60)
