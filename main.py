@@ -46,10 +46,11 @@ fade_direction = 1
 next_scene     = None
 
 def start_fade(scene_id):
-    global fading, fade_direction, next_scene
+    global fading, fade_direction, next_scene, needs_redraw
     fading         = True
     fade_direction = 1
     next_scene     = scene_id
+    needs_redraw   = True
 
 # -------------------------
 # ASSETS
@@ -116,10 +117,10 @@ class Button:
         self.text   = text
         self.target = target
 
-    def draw(self, surface, mouse):
+    def draw(self, surface, mouse, get_text):
         color = HOVER_BLUE if self.rect.collidepoint(mouse) else BLUE
         pygame.draw.rect(surface, color, self.rect, border_radius=8)
-        label = small_font.render(self.text, True, WHITE)
+        label = get_text(small_font, self.text, WHITE)
         rect  = label.get_rect(center=self.rect.center)
         surface.blit(label, rect)
 
@@ -281,11 +282,17 @@ def complete_anim(scene):
     anim["finished"] = True
 
 # -------------------------
+# DIRTY FLAG (global so start_fade can access it)
+# -------------------------
+needs_redraw = True
+
+# -------------------------
 # ASYNC MAIN
 # -------------------------
 async def main():
     global current_scene, active_buttons
     global fade_alpha, fading, fade_direction, next_scene
+    global needs_redraw
 
     load_assets()
     await asyncio.sleep(0)
@@ -294,13 +301,24 @@ async def main():
     active_buttons = []
     reset_anim(scenes[current_scene])
 
-    # cached surfaces — created once, reused every frame
-    box_h         = 160
+    # ---- CACHED SURFACES ----
+    box_h          = 160
     box_surf_cache = pygame.Surface((WIDTH - 80, box_h), pygame.SRCALPHA)
     box_surf_cache.fill((0, 0, 0, 180))
 
     fade_surf = pygame.Surface((WIDTH, HEIGHT))
     fade_surf.fill(BLACK)
+
+    # ---- TEXT CACHE ----
+    text_cache = {}
+    def get_text(f, text, color):
+        key = (id(f), text, color)
+        if key not in text_cache:
+            text_cache[key] = f.render(text, True, color)
+        return text_cache[key]
+
+    last_bob     = 0
+    needs_redraw = True
 
     running = True
 
@@ -312,7 +330,13 @@ async def main():
 
         time  = pygame.time.get_ticks()
         mouse = pygame.mouse.get_pos()
-        bob   = math.sin(time * 0.005) * 5 if scene["char"] != "none" else 0
+        bob   = math.sin(time * 0.002) * 4 if scene["char"] != "none" else 0
+
+        # bob change = redraw
+        current_bob = int(bob)
+        if current_bob != last_bob:
+            needs_redraw = True
+            last_bob     = current_bob
 
         # ---- TEXT ANIMATION ----
         if not anim["finished"]:
@@ -320,14 +344,16 @@ async def main():
                 target = scene["texts"][anim["line"]]
                 if anim["char"] < len(target):
                     anim["display"][anim["line"]] += target[anim["char"]]
-                    anim["char"] += 1
-                    anim["last"]  = time
+                    anim["char"]  += 1
+                    anim["last"]   = time
+                    needs_redraw   = True
                 else:
                     if anim["line"] < len(scene["texts"]) - 1:
                         anim["line"] += 1
                         anim["char"]  = 0
                     else:
                         anim["finished"] = True
+                        needs_redraw     = True
 
         # ---- EVENTS ----
         for event in pygame.event.get():
@@ -336,6 +362,7 @@ async def main():
                 sys.exit()
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                needs_redraw = True
                 if not anim["finished"]:
                     complete_anim(scene)
                 else:
@@ -345,6 +372,14 @@ async def main():
                         for b in active_buttons:
                             if b.clicked(mouse, event):
                                 start_fade(b.target)
+
+        # skip drawing if nothing changed
+        if not needs_redraw and not fading:
+            clock.tick(30)
+            await asyncio.sleep(0)
+            continue
+
+        needs_redraw = False
 
         # ---- DRAW BACKGROUND ----
         screen.fill(BLACK)
@@ -360,12 +395,12 @@ async def main():
 
         # ---- MENU SCREEN ----
         if scene["type"] == "menu":
-            shadow     = title_font.render("Why Am I Angry Today?", True, (30, 30, 30))
-            title_surf = title_font.render("Why Am I Angry Today?", True, WHITE)
+            shadow     = get_text(title_font, "Why Am I Angry Today?", (30, 30, 30))
+            title_surf = get_text(title_font, "Why Am I Angry Today?", WHITE)
             screen.blit(shadow,     shadow.get_rect(center=(WIDTH // 2 + 3, HEIGHT // 3 + 3)))
             screen.blit(title_surf, title_surf.get_rect(center=(WIDTH // 2, HEIGHT // 3)))
 
-            sub = small_font.render("A Visual Novel", True, (200, 200, 200))
+            sub = get_text(small_font, "A Visual Novel", (200, 200, 200))
             screen.blit(sub, sub.get_rect(center=(WIDTH // 2, HEIGHT // 3 + 70)))
 
             active_buttons = [
@@ -373,17 +408,17 @@ async def main():
                 Button("Credits",    WIDTH // 2 - 110, HEIGHT // 2 + 70, 220, 50, "credits"),
             ]
             for b in active_buttons:
-                b.draw(screen, mouse)
+                b.draw(screen, mouse, get_text)
 
         else:
-            # ---- TEXT BOX (using cached surface) ----
+            # ---- TEXT BOX ----
             box_rect = pygame.Rect(40, HEIGHT - box_h - 20, WIDTH - 80, box_h)
             screen.blit(box_surf_cache, (box_rect.x, box_rect.y))
             pygame.draw.rect(screen, WHITE, box_rect, 2, border_radius=8)
 
             y_offset = box_rect.y + 15
             for line in anim["display"]:
-                txt_surf = small_font.render(line, True, WHITE)
+                txt_surf = get_text(small_font, line, WHITE)
                 screen.blit(txt_surf, (box_rect.x + 15, y_offset))
                 y_offset += 32
 
@@ -401,11 +436,11 @@ async def main():
                     bx = start_x + i * (btn_w + gap)
                     b  = Button(c["text"], bx, btn_y, btn_w, btn_h, c["next"])
                     active_buttons.append(b)
-                    b.draw(screen, mouse)
+                    b.draw(screen, mouse, get_text)
             else:
                 active_buttons = []
 
-        # ---- FADE OVERLAY (using cached surface) ----
+        # ---- FADE OVERLAY ----
         if fading:
             fade_alpha += fade_speed * fade_direction
             if fade_direction == 1 and fade_alpha >= 255:
@@ -413,16 +448,17 @@ async def main():
                 current_scene  = next_scene
                 reset_anim(scenes[current_scene])
                 fade_direction = -1
+                needs_redraw   = True
             elif fade_direction == -1 and fade_alpha <= 0:
-                fade_alpha = 0
-                fading     = False
+                fade_alpha   = 0
+                fading       = False
+                needs_redraw = True
 
             fade_surf.set_alpha(int(fade_alpha))
             screen.blit(fade_surf, (0, 0))
 
         pygame.display.update()
         clock.tick(30)
-
         await asyncio.sleep(0)
 
 asyncio.run(main())
