@@ -4,9 +4,9 @@ import math
 import os
 import asyncio
 
-pygame.mixer.pre_init(22050, -16, 2, 512)
+pygame.mixer.pre_init(22050, -16, 1, 1024)
 pygame.init()
-pygame.mixer.init(22050, -16, 2, 512)
+pygame.mixer.init(22050, -16, 1, 1024)
 
 BASE_PATH = os.path.dirname(__file__)
 
@@ -176,7 +176,7 @@ scenes = {
         "texts":   ["You try to guess the reason..."],
         "type":    "choice",
         "choices": [
-            {"text": "Forgot anniversary",       "next": "anniversary"},
+            {"text": "Forgot anniversary",        "next": "anniversary"},
             {"text": "Liked another girl's post", "next": "post"},
             {"text": "Because I exist",           "next": "exist"}
         ],
@@ -287,13 +287,20 @@ async def main():
     global current_scene, active_buttons
     global fade_alpha, fading, fade_direction, next_scene
 
-    # Load assets inside async so browser doesn't time out
     load_assets()
     await asyncio.sleep(0)
 
     current_scene  = "title"
     active_buttons = []
     reset_anim(scenes[current_scene])
+
+    # cached surfaces — created once, reused every frame
+    box_h         = 160
+    box_surf_cache = pygame.Surface((WIDTH - 80, box_h), pygame.SRCALPHA)
+    box_surf_cache.fill((0, 0, 0, 180))
+
+    fade_surf = pygame.Surface((WIDTH, HEIGHT))
+    fade_surf.fill(BLACK)
 
     running = True
 
@@ -369,12 +376,9 @@ async def main():
                 b.draw(screen, mouse)
 
         else:
-            # ---- TEXT BOX ----
-            box_h    = 160
+            # ---- TEXT BOX (using cached surface) ----
             box_rect = pygame.Rect(40, HEIGHT - box_h - 20, WIDTH - 80, box_h)
-            box_surf = pygame.Surface((box_rect.width, box_rect.height), pygame.SRCALPHA)
-            box_surf.fill((0, 0, 0, 180))
-            screen.blit(box_surf, (box_rect.x, box_rect.y))
+            screen.blit(box_surf_cache, (box_rect.x, box_rect.y))
             pygame.draw.rect(screen, WHITE, box_rect, 2, border_radius=8)
 
             y_offset = box_rect.y + 15
@@ -401,7 +405,7 @@ async def main():
             else:
                 active_buttons = []
 
-        # ---- FADE OVERLAY ----
+        # ---- FADE OVERLAY (using cached surface) ----
         if fading:
             fade_alpha += fade_speed * fade_direction
             if fade_direction == 1 and fade_alpha >= 255:
@@ -413,15 +417,12 @@ async def main():
                 fade_alpha = 0
                 fading     = False
 
-            fade_surf = pygame.Surface((WIDTH, HEIGHT))
-            fade_surf.fill(BLACK)
             fade_surf.set_alpha(int(fade_alpha))
             screen.blit(fade_surf, (0, 0))
 
         pygame.display.update()
-        clock.tick(60)
+        clock.tick(30)
 
-        # REQUIRED FOR PYGBAG — yields control back to browser each frame
         await asyncio.sleep(0)
 
 asyncio.run(main())
