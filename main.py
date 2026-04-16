@@ -2,6 +2,7 @@ import pygame
 import sys
 import math
 import os
+import asyncio
 
 pygame.mixer.pre_init(22050, -16, 1, 1024)
 pygame.init()
@@ -309,142 +310,152 @@ def get_text(f, text, color):
 last_bob = 0
 
 # -------------------------
-# MAIN LOOP
+# ASYNC MAIN LOOP (pygbag)
 # -------------------------
-running = True
+async def main():
+    global current_scene, active_buttons, last_bob
+    global fade_alpha, fading, fade_direction, next_scene, needs_redraw
 
-while running:
-    scene = scenes[current_scene]
+    running = True
 
-    if "music" in scene:
-        play_music(scene["music"])
+    while running:
+        scene = scenes[current_scene]
 
-    time  = pygame.time.get_ticks()
-    mouse = pygame.mouse.get_pos()
-    bob   = math.sin(time * 0.002) * 4 if scene["char"] != "none" else 0
+        if "music" in scene:
+            play_music(scene["music"])
 
-    current_bob = int(bob)
-    if current_bob != last_bob:
-        needs_redraw = True
-        last_bob     = current_bob
+        time  = pygame.time.get_ticks()
+        mouse = pygame.mouse.get_pos()
+        bob   = math.sin(time * 0.002) * 4 if scene["char"] != "none" else 0
 
-    # ---- TEXT ANIMATION ----
-    if not anim["finished"]:
-        if time - anim["last"] > anim["speed"]:
-            target = scene["texts"][anim["line"]]
-            if anim["char"] < len(target):
-                anim["display"][anim["line"]] += target[anim["char"]]
-                anim["char"]  += 1
-                anim["last"]   = time
-                needs_redraw   = True
-            else:
-                if anim["line"] < len(scene["texts"]) - 1:
-                    anim["line"] += 1
-                    anim["char"]  = 0
+        current_bob = int(bob)
+        if current_bob != last_bob:
+            needs_redraw = True
+            last_bob     = current_bob
+
+        # ---- TEXT ANIMATION ----
+        if not anim["finished"]:
+            if time - anim["last"] > anim["speed"]:
+                target = scene["texts"][anim["line"]]
+                if anim["char"] < len(target):
+                    anim["display"][anim["line"]] += target[anim["char"]]
+                    anim["char"]  += 1
+                    anim["last"]   = time
+                    needs_redraw   = True
                 else:
-                    anim["finished"] = True
-                    needs_redraw     = True
+                    if anim["line"] < len(scene["texts"]) - 1:
+                        anim["line"] += 1
+                        anim["char"]  = 0
+                    else:
+                        anim["finished"] = True
+                        needs_redraw     = True
 
-    # ---- EVENTS ----
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+        # ---- EVENTS ----
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
 
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            needs_redraw = True
-            if not anim["finished"]:
-                complete_anim(scene)
-            else:
-                if scene["type"] == "story":
-                    start_fade(scene["next"])
-                elif scene["type"] in ("choice", "menu"):
-                    for b in active_buttons:
-                        if b.clicked(mouse, event):
-                            start_fade(b.target)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                needs_redraw = True
+                if not anim["finished"]:
+                    complete_anim(scene)
+                else:
+                    if scene["type"] == "story":
+                        start_fade(scene["next"])
+                    elif scene["type"] in ("choice", "menu"):
+                        for b in active_buttons:
+                            if b.clicked(mouse, event):
+                                start_fade(b.target)
 
-    # skip drawing if nothing changed
-    if not needs_redraw and not fading:
-        clock.tick(30)
-        continue
+        # skip drawing if nothing changed
+        if not needs_redraw and not fading:
+            clock.tick(30)
+            await asyncio.sleep(0)  # ← yield to browser even when skipping draw
+            continue
 
-    needs_redraw = False
+        needs_redraw = False
 
-    # ---- DRAW BACKGROUND ----
-    screen.fill(BLACK)
-    if scene["bg"] in loaded_assets:
-        screen.blit(loaded_assets[scene["bg"]], (0, 0))
+        # ---- DRAW BACKGROUND ----
+        screen.fill(BLACK)
+        if scene["bg"] in loaded_assets:
+            screen.blit(loaded_assets[scene["bg"]], (0, 0))
 
-    # ---- DRAW CHARACTER ----
-    if scene["char"] != "none" and scene["char"] in loaded_assets:
-        char_img = loaded_assets[scene["char"]]
-        char_x   = WIDTH  // 2 - char_img.get_width()  // 2
-        char_y   = HEIGHT - char_img.get_height() - 20 + int(bob)
-        screen.blit(char_img, (char_x, char_y))
+        # ---- DRAW CHARACTER ----
+        if scene["char"] != "none" and scene["char"] in loaded_assets:
+            char_img = loaded_assets[scene["char"]]
+            char_x   = WIDTH  // 2 - char_img.get_width()  // 2
+            char_y   = HEIGHT - char_img.get_height() - 20 + int(bob)
+            screen.blit(char_img, (char_x, char_y))
 
-    # ---- MENU SCREEN ----
-    if scene["type"] == "menu":
-        shadow     = get_text(title_font, "Why Am I Angry Today?", (30, 30, 30))
-        title_surf = get_text(title_font, "Why Am I Angry Today?", WHITE)
-        screen.blit(shadow,     shadow.get_rect(center=(WIDTH // 2 + 3, HEIGHT // 3 + 3)))
-        screen.blit(title_surf, title_surf.get_rect(center=(WIDTH // 2, HEIGHT // 3)))
+        # ---- MENU SCREEN ----
+        if scene["type"] == "menu":
+            shadow     = get_text(title_font, "Why Am I Angry Today?", (30, 30, 30))
+            title_surf = get_text(title_font, "Why Am I Angry Today?", WHITE)
+            screen.blit(shadow,     shadow.get_rect(center=(WIDTH // 2 + 3, HEIGHT // 3 + 3)))
+            screen.blit(title_surf, title_surf.get_rect(center=(WIDTH // 2, HEIGHT // 3)))
 
-        sub = get_text(small_font, "A Visual Novel", (200, 200, 200))
-        screen.blit(sub, sub.get_rect(center=(WIDTH // 2, HEIGHT // 3 + 70)))
+            sub = get_text(small_font, "A Visual Novel", (200, 200, 200))
+            screen.blit(sub, sub.get_rect(center=(WIDTH // 2, HEIGHT // 3 + 70)))
 
-        active_buttons = [
-            Button("Start Game", WIDTH // 2 - 110, HEIGHT // 2,      220, 50, "intro"),
-            Button("Credits",    WIDTH // 2 - 110, HEIGHT // 2 + 70, 220, 50, "credits"),
-        ]
-        for b in active_buttons:
-            b.draw(screen, mouse, get_text)
-
-    else:
-        # ---- TEXT BOX ----
-        box_rect = pygame.Rect(40, HEIGHT - box_h - 20, WIDTH - 80, box_h)
-        screen.blit(box_surf_cache, (box_rect.x, box_rect.y))
-        pygame.draw.rect(screen, WHITE, box_rect, 2, border_radius=8)
-
-        y_offset = box_rect.y + 15
-        for line in anim["display"]:
-            txt_surf = get_text(small_font, line, WHITE)
-            screen.blit(txt_surf, (box_rect.x + 15, y_offset))
-            y_offset += 32
-
-        # ---- CHOICE BUTTONS ----
-        if scene["type"] == "choice" and anim["finished"]:
-            active_buttons = []
-            choices = scene["choices"]
-            btn_w, btn_h = 260, 48
-            gap     = 20
-            total_w = len(choices) * btn_w + (len(choices) - 1) * gap
-            start_x = WIDTH  // 2 - total_w // 2
-            btn_y   = HEIGHT // 2 - btn_h   // 2
-
-            for i, c in enumerate(choices):
-                bx = start_x + i * (btn_w + gap)
-                b  = Button(c["text"], bx, btn_y, btn_w, btn_h, c["next"])
-                active_buttons.append(b)
+            active_buttons = [
+                Button("Start Game", WIDTH // 2 - 110, HEIGHT // 2,      220, 50, "intro"),
+                Button("Credits",    WIDTH // 2 - 110, HEIGHT // 2 + 70, 220, 50, "credits"),
+            ]
+            for b in active_buttons:
                 b.draw(screen, mouse, get_text)
+
         else:
-            active_buttons = []
+            # ---- TEXT BOX ----
+            box_rect = pygame.Rect(40, HEIGHT - box_h - 20, WIDTH - 80, box_h)
+            screen.blit(box_surf_cache, (box_rect.x, box_rect.y))
+            pygame.draw.rect(screen, WHITE, box_rect, 2, border_radius=8)
 
-    # ---- FADE OVERLAY ----
-    if fading:
-        fade_alpha += fade_speed * fade_direction
-        if fade_direction == 1 and fade_alpha >= 255:
-            fade_alpha     = 255
-            current_scene  = next_scene
-            reset_anim(scenes[current_scene])
-            fade_direction = -1
-            needs_redraw   = True
-        elif fade_direction == -1 and fade_alpha <= 0:
-            fade_alpha   = 0
-            fading       = False
-            needs_redraw = True
+            y_offset = box_rect.y + 15
+            for line in anim["display"]:
+                txt_surf = get_text(small_font, line, WHITE)
+                screen.blit(txt_surf, (box_rect.x + 15, y_offset))
+                y_offset += 32
 
-        fade_surf.set_alpha(int(fade_alpha))
-        screen.blit(fade_surf, (0, 0))
+            # ---- CHOICE BUTTONS ----
+            if scene["type"] == "choice" and anim["finished"]:
+                active_buttons = []
+                choices = scene["choices"]
+                btn_w, btn_h = 260, 48
+                gap     = 20
+                total_w = len(choices) * btn_w + (len(choices) - 1) * gap
+                start_x = WIDTH  // 2 - total_w // 2
+                btn_y   = HEIGHT // 2 - btn_h   // 2
 
-    pygame.display.update()
-    clock.tick(30)
+                for i, c in enumerate(choices):
+                    bx = start_x + i * (btn_w + gap)
+                    b  = Button(c["text"], bx, btn_y, btn_w, btn_h, c["next"])
+                    active_buttons.append(b)
+                    b.draw(screen, mouse, get_text)
+            else:
+                active_buttons = []
+
+        # ---- FADE OVERLAY ----
+        if fading:
+            fade_alpha += fade_speed * fade_direction
+            if fade_direction == 1 and fade_alpha >= 255:
+                fade_alpha     = 255
+                current_scene  = next_scene
+                reset_anim(scenes[current_scene])
+                fade_direction = -1
+                needs_redraw   = True
+            elif fade_direction == -1 and fade_alpha <= 0:
+                fade_alpha   = 0
+                fading       = False
+                needs_redraw = True
+
+            fade_surf.set_alpha(int(fade_alpha))
+            screen.blit(fade_surf, (0, 0))
+
+        pygame.display.update()
+        clock.tick(30)
+
+        await asyncio.sleep(0)  # ← MANDATORY: yields control back to the browser
+
+
+asyncio.run(main())
