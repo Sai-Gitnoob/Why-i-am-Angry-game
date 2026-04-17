@@ -98,7 +98,7 @@ Pygame handles:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/yourusername/why-am-i-angry-today.git
+git clone https://github.com/Sai-Gitnoob/Why-i-am-Angry-game
 cd why-am-i-angry-today
 ```
 
@@ -251,7 +251,7 @@ Bachelor of Science in **Artificial Intelligence & Machine Learning**
 IIT Jodhpur
 
 GitHub:
-https://github.com/yourusername
+https://github.com/Sai-Gitnoob/Why-i-am-Angry-game
 
 ---
 
